@@ -62,7 +62,7 @@ export function useAuth() {
         loading,
         signOut,
         isAuthenticated: !!user,
-        isAdmin: profile?.role === 'admin' || profile?.role === 'owner',
-        isSuperAdmin: profile?.role === 'owner',
+        isAdmin: profile?.role === 'admin' || profile?.role === 'owner' || profile?.role === 'super_admin',
+        isSuperAdmin: profile?.role === 'super_admin',
     };
 }

@@ -217,45 +217,53 @@ RETURNS UUID AS $$
   SELECT organization_id FROM profiles WHERE user_id = auth.uid() LIMIT 1;
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
--- Organizations: users can only see their own
-CREATE POLICY "Users can view their own organization" ON organizations
-FOR SELECT USING (id = get_my_org_id());
+-- Helper function to check if user is super admin
+CREATE OR REPLACE FUNCTION is_super_admin()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE user_id = auth.uid() 
+    AND role = 'super_admin'
+  );
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
 
--- Profiles: users can see colleagues
-CREATE POLICY "Users can view colleagues" ON profiles
-FOR SELECT USING (organization_id = get_my_org_id());
+-- Organizations: users can only see their own, super admins see all
+CREATE POLICY "Users view org" ON organizations FOR SELECT USING (id = get_my_org_id() OR is_super_admin());
+CREATE POLICY "Admins manage org" ON organizations FOR ALL USING (is_super_admin());
 
--- Clients: users see company clients
-CREATE POLICY "Users can view company clients" ON clients
-FOR ALL USING (organization_id = get_my_org_id());
+-- Profiles: users see colleagues, super admins see all
+CREATE POLICY "Users view profiles" ON profiles FOR SELECT USING (organization_id = get_my_org_id() OR is_super_admin());
+CREATE POLICY "Admins manage profiles" ON profiles FOR ALL USING (is_super_admin());
 
--- Projects: users see company projects
-CREATE POLICY "Users can view company projects" ON projects
-FOR ALL USING (organization_id = get_my_org_id());
+-- Clients: users see company clients, super admins see all
+CREATE POLICY "Users view clients" ON clients FOR ALL USING (organization_id = get_my_org_id() OR is_super_admin());
+
+-- Projects: users see company projects, super admins see all
+CREATE POLICY "Users view projects" ON projects FOR ALL USING (organization_id = get_my_org_id() OR is_super_admin());
 
 -- Project Members
-CREATE POLICY "Users can view project members" ON project_members
-FOR SELECT USING (project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id()));
+CREATE POLICY "Users view project members" ON project_members
+FOR SELECT USING (project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id()) OR is_super_admin());
 
 -- Channels
-CREATE POLICY "Users can view channels" ON channels
-FOR SELECT USING (project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id()));
+CREATE POLICY "Users view channels" ON channels
+FOR SELECT USING (project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id()) OR is_super_admin());
 
 -- Messages
-CREATE POLICY "Users can view messages" ON messages
-FOR SELECT USING (channel_id IN (SELECT id FROM channels WHERE project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id())));
+CREATE POLICY "Users view messages" ON messages
+FOR SELECT USING (channel_id IN (SELECT id FROM channels WHERE project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id())) OR is_super_admin());
 
-CREATE POLICY "Users can send messages" ON messages
-FOR INSERT WITH CHECK (channel_id IN (SELECT id FROM channels WHERE project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id())));
+CREATE POLICY "Users send messages" ON messages
+FOR INSERT WITH CHECK (channel_id IN (SELECT id FROM channels WHERE project_id IN (SELECT id FROM projects WHERE organization_id = get_my_org_id())) OR is_super_admin());
 
 -- Tasks
-CREATE POLICY "Users can view company tasks" ON tasks
-FOR ALL USING (organization_id = get_my_org_id());
+CREATE POLICY "Users view tasks" ON tasks
+FOR ALL USING (organization_id = get_my_org_id() OR is_super_admin());
 
 -- Task Assignees, Checklists, Comments
-CREATE POLICY "Users can manage task metadata" ON task_assignees FOR ALL USING (task_id IN (SELECT id FROM tasks WHERE organization_id = get_my_org_id()));
-CREATE POLICY "Users can manage task checklists" ON task_checklists FOR ALL USING (task_id IN (SELECT id FROM tasks WHERE organization_id = get_my_org_id()));
-CREATE POLICY "Users can manage task comments" ON task_comments FOR ALL USING (task_id IN (SELECT id FROM tasks WHERE organization_id = get_my_org_id()));
+CREATE POLICY "Users manage task assignees" ON task_assignees FOR ALL USING (task_id IN (SELECT id FROM tasks WHERE organization_id = get_my_org_id()) OR is_super_admin());
+CREATE POLICY "Users manage task checklists" ON task_checklists FOR ALL USING (task_id IN (SELECT id FROM tasks WHERE organization_id = get_my_org_id()) OR is_super_admin());
+CREATE POLICY "Users manage task comments" ON task_comments FOR ALL USING (task_id IN (SELECT id FROM tasks WHERE organization_id = get_my_org_id()) OR is_super_admin());
 
 -- Trigger to create profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()

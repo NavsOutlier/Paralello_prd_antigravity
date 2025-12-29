@@ -6,10 +6,11 @@ import DashboardPage from './pages/DashboardPage';
 import WorkspacePage from './pages/WorkspacePage';
 import ClientsPage from './pages/ClientsPage';
 import SettingsPage from './pages/SettingsPage';
+import SuperAdminPage from './pages/SuperAdminPage';
 import { useAuth } from './hooks/useAuth';
 
 const App: React.FC = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isSuperAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -32,6 +33,12 @@ const App: React.FC = () => {
           <Route path="/workspace/:projectId" element={<WorkspacePage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+
+          {/* Admin Routes */}
+          {isSuperAdmin && (
+            <Route path="/super-admin" element={<SuperAdminPage />} />
+          )}
+
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
 

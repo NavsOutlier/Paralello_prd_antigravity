@@ -13,9 +13,10 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../hooks/useAuth';
+import { ShieldAlert } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-    const { profile, signOut } = useAuth();
+    const { profile, signOut, isSuperAdmin } = useAuth();
     const isSidebarOpen = true; // Fixed for now as per design
     const location = useLocation();
     const navigate = useNavigate();
@@ -26,6 +27,15 @@ const MainLayout: React.FC = () => {
         { icon: <Users size={20} />, label: 'Clientes', path: '/clients' },
         { icon: <Settings size={20} />, label: 'Configurações', path: '/settings' },
     ];
+
+    // Add Super Admin item if applicable
+    if (isSuperAdmin) {
+        navItems.push({
+            icon: <ShieldAlert size={20} className="text-amber-500" />,
+            label: 'SaaS Admin',
+            path: '/super-admin'
+        });
+    }
 
     const handleSignOut = async () => {
         await signOut();
